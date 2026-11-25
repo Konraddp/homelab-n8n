@@ -26,3 +26,7 @@ Passwortmanager. Ohne ihn sind Credentials nach einer Wiederherstellung unbrauch
 - Aufruf von Paperless aus dem n8n-Container → HTTP 400 (Django `ALLOWED_HOSTS`),
   gelöst im Paperless-Stack mit `PAPERLESS_ALLOWED_HOSTS=localhost,webserver`.
 - `db/init.sql` läuft nur bei leerem Volume. Schemaänderungen später per Migration/psql.
+- Encryption Key rotiert (war versehentlich geteilt) → Absturz „Deployment key 'signing.hmac'
+  cannot be read with this instance encryption key“. n8n 2.x speichert verschlüsselte
+  Schlüssel auch in der Datenbank, nicht nur in `~/.n8n`. Ein Wechsel des Keys ist also nur
+  vor der Einrichtung trivial (beide Volumes zurücksetzen); danach verliert man die Credentials.
