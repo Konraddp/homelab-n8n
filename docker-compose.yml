@@ -29,6 +29,8 @@ services:
       GENERIC_TIMEZONE: Europe/Berlin
       TZ: Europe/Berlin
       N8N_DIAGNOSTICS_ENABLED: "false"
+      NOTIFY_EMAIL: ${NOTIFY_EMAIL}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     networks:
       - default
       - paperless

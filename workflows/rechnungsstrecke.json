@@ -194,6 +194,64 @@
           "name": "Postgres account"
         }
       }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 4
+          },
+          "conditions": [
+            {
+              "id": "282c7722-de74-4775-9f9c-703df70e4f53",
+              "leftValue": "={{ $json.results?.[0]?.status }}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.4,
+      "position": [
+        1760,
+        208
+      ],
+      "id": "9bc15b40-edf9-4c94-abb7-f63c130ce0ed",
+      "name": "Upload nicht bestätigt?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.NOTIFY_EMAIL }}",
+        "toEmail": "={{ $env.NOTIFY_EMAIL }}",
+        "subject": "=Rechnungsstrecke: Upload nicht bestätigt – {{ $('Nur neue Anhänge').item.json.fileName }}",
+        "emailFormat": "text",
+        "text": "=Datei: {{ $('Nur neue Anhänge').item.json.fileName }}\nMail: {{ $('Nur neue Anhänge').item.json.subject }} (von {{ $('Nur neue Anhänge').item.json.from }})\nPaperless-Status: {{ $json.results?.[0]?.status ?? 'Task nicht gefunden' }}\nDetails: {{ JSON.stringify($json.results?.[0]?.result_data ?? {}) }}\nEintrag in automation.processed_attachments: id {{ $('Nur neue Anhänge').item.json.dedupId }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1984,
+        112
+      ],
+      "id": "37e5ddc1-74a6-4b45-9e7e-df9279bca4ab",
+      "name": "Mail: Upload-Problem",
+      "webhookId": "d763fb01-0bfa-4df7-b4a6-19bf6ff30019",
+      "credentials": {
+        "smtp": {
+          "id": "tNvyBisdiwVRbb0T",
+          "name": "SMTP account"
+        }
+      }
     }
   ],
   "connections": {
@@ -281,6 +339,22 @@
             "node": "Status speichern",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Upload nicht bestätigt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload nicht bestätigt?": {
+      "main": [
+        [
+          {
+            "node": "Mail: Upload-Problem",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -288,7 +362,11 @@
   },
   "settings": {
     "executionOrder": "v1",
-    "binaryMode": "separate"
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "errorWorkflow": "J6jsjiaqhmaoni2D",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
   },
   "staticData": null,
   "nodeGroups": [],

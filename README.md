@@ -51,3 +51,16 @@ Import: `docker compose cp workflows/x.json n8n:/tmp/ && docker compose exec n8n
 IMAP-Trigger → PDF-Anhänge extrahieren → SHA-256 → Duplikat-Check (INSERT … ON CONFLICT
 DO NOTHING) → Nur neue Anhänge → Upload Paperless → 10 s warten → Task-Status → Status
 speichern (uploaded / failed / pending).
+- Fehler-Workflow war in den Workflow-Einstellungen ausgegraut: In n8n 2.x muss er erst
+  veröffentlicht werden (Draft vs. Published).
+- Fehler-Workflow greift nur bei automatischen Ausführungen, nicht bei manuellen Testläufen.
+- Benachrichtigungsadresse steht nicht in den Workflows, sondern als `NOTIFY_EMAIL` in `.env`
+  (Zugriff per `$env.NOTIFY_EMAIL`). Dafür nötig: `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`.
+  Abwägung: Damit können Expressions alle Container-Variablen lesen (auch DB-Passwort und
+  Encryption Key). Vertretbar bei lokaler Single-User-Instanz, nicht bei geteilten Instanzen.
+  Die UI-Vorschau zeigt `$env`-Werte bewusst nicht an („not accessible via UI“).
+
+## Fehlerbehandlung
+- **Absturz** irgendwo im Workflow → Error Workflow „Fehlerbenachrichtigung“ → Mail.
+- **Upload nicht bestätigt** (Paperless-Task ≠ success) → eigener Zweig → Mail mit Datei,
+  Absender und ID in `automation.processed_attachments`.
