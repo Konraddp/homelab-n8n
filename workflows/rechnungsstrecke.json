@@ -2,7 +2,7 @@
   "id": "rMYJbUVrwogFf23A",
   "name": "Rechnungsstrecke",
   "description": null,
-  "active": false,
+  "active": true,
   "isArchived": false,
   "nodes": [
     {
@@ -10,7 +10,8 @@
         "postProcessAction": "nothing",
         "format": "resolved",
         "options": {
-          "customEmailConfig": "[\"UNSEEN\", [\"SUBJECT\", \"Testrechnung\"]]"
+          "customEmailConfig": "[[\"X-GM-RAW\", \"has:attachment filename:pdf {rechnung receipt invoice quittung} newer_than:30d\"]]",
+          "trackLastMessageId": true
         }
       },
       "type": "n8n-nodes-base.emailReadImap",
@@ -30,7 +31,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Ein Element pro PDF-Anhang, mit den Mail-Metadaten\nconst out = [];\n\nfor (const item of $input.all()) {\n  const binaries = item.binary ?? {};\n\n  for (const bin of Object.values(binaries)) {\n    const name = (bin.fileName ?? '').toLowerCase();\n    const isPdf = bin.mimeType === 'application/pdf' || name.endsWith('.pdf');\n    if (!isPdf) continue;\n\n    out.push({\n      json: {\n        messageId: item.json.messageId,\n        subject: item.json.subject,\n        from: item.json.from?.value?.[0]?.address ?? null,\n        receivedAt: item.json.date,\n        fileName: bin.fileName,\n        mimeType: bin.mimeType,\n      },\n      binary: { data: bin },\n    });\n  }\n}\n\nreturn out;"
+        "jsCode": "// Ein Element pro PDF-Anhang, der nach Rechnung aussieht.\n// Regel: Stichwort im Dateinamen ODER im Betreff, und kein Ausschluss-Stichwort im Dateinamen.\nconst STICHWORTE = /(rechnung|receipt|invoice|quittung|beleg)/i;\nconst AUSSCHLUSS = /(agb|widerruf|terms|datenschutz|privacy|bedingungen)/i;\n\nconst out = [];\n\nfor (const item of $input.all()) {\n  const betreffTreffer = STICHWORTE.test(item.json.subject ?? '');\n\n  for (const bin of Object.values(item.binary ?? {})) {\n    const name = bin.fileName ?? '';\n    const isPdf = bin.mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf');\n    if (!isPdf) continue;\n    if (AUSSCHLUSS.test(name)) continue;\n    if (!STICHWORTE.test(name) && !betreffTreffer) continue;\n\n    out.push({\n      json: {\n        messageId: item.json.messageId,\n        subject: item.json.subject,\n        from: item.json.from?.value?.[0]?.address ?? null,\n        receivedAt: item.json.date,\n        fileName: name,\n        mimeType: bin.mimeType,\n        grund: STICHWORTE.test(name) ? 'dateiname' : 'betreff',\n      },\n      binary: { data: bin },\n    });\n  }\n}\n\nreturn out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,

@@ -64,3 +64,16 @@ speichern (uploaded / failed / pending).
 - **Absturz** irgendwo im Workflow → Error Workflow „Fehlerbenachrichtigung“ → Mail.
 - **Upload nicht bestätigt** (Paperless-Task ≠ success) → eigener Zweig → Mail mit Datei,
   Absender und ID in `automation.processed_attachments`.
+- Gmail-Suche im Browser fand 3 Mails, n8n nur 2. Ursache: Trigger-Option „Fetch Only New Email“
+  liefert nur Mails mit höherer UID als die zuletzt gesehene. Für einmalige Nachimporte
+  ausschalten, im Betrieb an lassen (Duplikat-Schutz fängt Wiederholungen ab).
+- Suchregel: Gmail-IMAP-Erweiterung `X-GM-RAW` mit
+  `has:attachment filename:pdf {rechnung receipt invoice quittung} newer_than:30d`,
+  unabhängig von gelesen/ungelesen. Feinauswahl pro Anhang per Stichwort in Dateiname oder
+  Betreff, AGB/Widerruf o. Ä. ausgeschlossen. Zahlungsmails ohne PDF (PayPal, Substack)
+  fallen bewusst heraus, sonst würde dieselbe Ausgabe doppelt erfasst.
+- Stripe-Mails (z. B. Anthropic) enthalten Invoice und Receipt: beide werden archiviert
+  (Rechnung + Zahlungsbeleg). Bei Auswertungen nur eines zählen.
+
+## Nachweis Deduplizierung (echte Daten, 26.11.2026)
+Dieselbe Quittung in 3 Mails (2 Testmails + Original) → 1 Eintrag, 1 Upload.
