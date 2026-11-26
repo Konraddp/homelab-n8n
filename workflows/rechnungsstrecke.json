@@ -1,0 +1,164 @@
+{
+  "id": "rMYJbUVrwogFf23A",
+  "name": "Rechnungsstrecke",
+  "description": null,
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "postProcessAction": "nothing",
+        "format": "resolved",
+        "options": {
+          "customEmailConfig": "[\"UNSEEN\", [\"SUBJECT\", \"Testrechnung\"]]"
+        }
+      },
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "7c1d8cbd-b175-499d-b14c-b3c3fc92f960",
+      "name": "Email Trigger (IMAP)",
+      "credentials": {
+        "imap": {
+          "id": "B17jD9UZoHMESrao",
+          "name": "IMAP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ein Element pro PDF-Anhang, mit den Mail-Metadaten\nconst out = [];\n\nfor (const item of $input.all()) {\n  const binaries = item.binary ?? {};\n\n  for (const bin of Object.values(binaries)) {\n    const name = (bin.fileName ?? '').toLowerCase();\n    const isPdf = bin.mimeType === 'application/pdf' || name.endsWith('.pdf');\n    if (!isPdf) continue;\n\n    out.push({\n      json: {\n        messageId: item.json.messageId,\n        subject: item.json.subject,\n        from: item.json.from?.value?.[0]?.address ?? null,\n        receivedAt: item.json.date,\n        fileName: bin.fileName,\n        mimeType: bin.mimeType,\n      },\n      binary: { data: bin },\n    });\n  }\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "a5c2f935-95ea-4b61-9cc8-c61765df3934",
+      "name": "PDF-Anhänge extrahieren"
+    },
+    {
+      "parameters": {
+        "binaryData": true,
+        "dataPropertyName": "sha256"
+      },
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "84a74c8b-4322-49ef-8d06-3d340dc36168",
+      "name": "Crypto"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO automation.processed_attachments (message_id, attachment_sha256, filename, status)\nVALUES ($1, $2, $3, 'pending')\nON CONFLICT (attachment_sha256) DO NOTHING\nRETURNING id, attachment_sha256;",
+        "options": {
+          "queryReplacement": "={{ [$json.messageId, $json.sha256, $json.fileName] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        672,
+        128
+      ],
+      "id": "ea117d26-eb4d-4b7c-b177-96c81596c088",
+      "name": "Duplikat-Check",
+      "credentials": {
+        "postgres": {
+          "id": "ji9ymk4x6Ah388Gy",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "sha256",
+              "field2": "attachment_sha256"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "2d5e46e8-13a7-49f6-a679-dcd8d5a480b1",
+      "name": "Merge"
+    }
+  ],
+  "connections": {
+    "Email Trigger (IMAP)": {
+      "main": [
+        [
+          {
+            "node": "PDF-Anhänge extrahieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF-Anhänge extrahieren": {
+      "main": [
+        [
+          {
+            "node": "Crypto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crypto": {
+      "main": [
+        [
+          {
+            "node": "Duplikat-Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplikat-Check": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null,
+  "tags": []
+}

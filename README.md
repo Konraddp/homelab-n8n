@@ -30,3 +30,13 @@ Passwortmanager. Ohne ihn sind Credentials nach einer Wiederherstellung unbrauch
   cannot be read with this instance encryption key“. n8n 2.x speichert verschlüsselte
   Schlüssel auch in der Datenbank, nicht nur in `~/.n8n`. Ein Wechsel des Keys ist also nur
   vor der Einrichtung trivial (beide Volumes zurücksetzen); danach verliert man die Credentials.
+- Encryption Key ein zweites Mal versehentlich geteilt, diesmal nach Anlage von Credentials.
+  Rotation: Workflow exportiert, `docker compose down -v`, neuer Key, Owner-Konto und
+  Credentials neu angelegt, Gmail-App-Passwort widerrufen und neu erstellt, Workflow importiert.
+  Lehre: Secrets nur per `pbcopy` bewegen, nie anzeigen lassen.
+- n8n-Export enthält im Block `shared` die E-Mail-Adresse des Owners. `export-workflows.sh`
+  entfernt das (und volatile Felder), formatiert lesbar und warnt bei verdächtigen Inhalten.
+
+## Workflows versionieren
+    ./export-workflows.sh && git add workflows/ && git commit -m "..."
+Import: `docker compose cp workflows/x.json n8n:/tmp/ && docker compose exec n8n n8n import:workflow --input=/tmp/x.json`
