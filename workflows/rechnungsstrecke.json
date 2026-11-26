@@ -67,7 +67,7 @@
       "typeVersion": 2.8,
       "position": [
         672,
-        128
+        0
       ],
       "id": "ea117d26-eb4d-4b7c-b177-96c81596c088",
       "name": "Duplikat-Check",
@@ -80,26 +80,61 @@
     },
     {
       "parameters": {
-        "mode": "combine",
-        "advanced": true,
-        "mergeByFields": {
-          "values": [
+        "method": "POST",
+        "url": "http://webserver:8000/api/documents/post_document/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
             {
-              "field1": "sha256",
-              "field2": "attachment_sha256"
+              "parameterType": "formBinaryData",
+              "name": "document",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "tags",
+              "value": "1"
             }
           ]
         },
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "taskId"
+            }
+          }
+        }
       },
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1088,
+        0
+      ],
+      "id": "e2e9299e-8452-40e0-bad6-a16660970f38",
+      "name": "Upload Paperless",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "U6k83Liz7xQq6Ft6",
+          "name": "Paperless API (User n8n)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// PDF aus \"PDF-Anhänge extrahieren\", Hash aus \"Crypto\" (gleiche Reihenfolge, 1:1).\n// Weitergegeben werden nur Anhänge, die der Duplikat-Check als neu eingetragen hat.\nconst pdfs   = $('PDF-Anhänge extrahieren').all();\nconst hashes = $('Crypto').all();\n\nconst neu = new Map(\n  $input.all()\n    .filter(i => i.json.attachment_sha256)\n    .map(i => [i.json.attachment_sha256.trim(), i.json.id])\n);\n\nconst out = [];\nhashes.forEach((h, idx) => {\n  const hash = h.json.sha256;\n  if (!neu.has(hash)) return;               // Duplikat → überspringen\n\n  const pdf = pdfs[idx];\n  if (!pdf?.binary?.data) {\n    throw new Error(`Kein PDF zum Hash ${hash} (Position ${idx})`);\n  }\n  out.push({\n    json: { ...h.json, dedupId: neu.get(hash) },\n    binary: { data: pdf.binary.data },\n  });\n});\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         896,
         0
       ],
-      "id": "2d5e46e8-13a7-49f6-a679-dcd8d5a480b1",
-      "name": "Merge"
+      "id": "e29209ba-4d6c-40e6-b2f6-6ff4a4c4b7d8",
+      "name": "Nur neue Anhänge"
     }
   ],
   "connections": {
@@ -132,11 +167,6 @@
             "node": "Duplikat-Check",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -145,9 +175,20 @@
       "main": [
         [
           {
-            "node": "Merge",
+            "node": "Nur neue Anhänge",
             "type": "main",
-            "index": 1
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nur neue Anhänge": {
+      "main": [
+        [
+          {
+            "node": "Upload Paperless",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
