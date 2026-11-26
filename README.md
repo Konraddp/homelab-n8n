@@ -40,3 +40,14 @@ Passwortmanager. Ohne ihn sind Credentials nach einer Wiederherstellung unbrauch
 ## Workflows versionieren
     ./export-workflows.sh && git add workflows/ && git commit -m "..."
 Import: `docker compose cp workflows/x.json n8n:/tmp/ && docker compose exec n8n n8n import:workflow --input=/tmp/x.json`
+- Merge-Knoten (Combine by Fields) gab das PDF nicht weiter; außerdem liefert der Crypto-Knoten
+  nur den Hash ohne Binärdaten. Lösung: Code-Knoten „Nur neue Anhänge“ ordnet PDF
+  (aus „PDF-Anhänge extrahieren“) und Hash (aus „Crypto“) über die Position zu und lässt nur
+  vom Duplikat-Check neu eingetragene Anhänge durch.
+- „Execute step“ verwendet Ergebnisse vorheriger Knoten aus früheren Läufen weiter.
+  Bei Tests mit Datenbankzustand immer den ganzen Workflow ausführen.
+
+## Rechnungsstrecke (Stand)
+IMAP-Trigger → PDF-Anhänge extrahieren → SHA-256 → Duplikat-Check (INSERT … ON CONFLICT
+DO NOTHING) → Nur neue Anhänge → Upload Paperless → 10 s warten → Task-Status → Status
+speichern (uploaded / failed / pending).

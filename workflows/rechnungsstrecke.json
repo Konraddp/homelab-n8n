@@ -135,6 +135,65 @@
       ],
       "id": "e29209ba-4d6c-40e6-b2f6-6ff4a4c4b7d8",
       "name": "Nur neue Anhänge"
+    },
+    {
+      "parameters": {
+        "amount": 10
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1312,
+        0
+      ],
+      "id": "faaed252-7abe-4323-9c18-b1c8bb1ec06a",
+      "name": "Kurz warten",
+      "webhookId": "7777612b-5fcd-4fad-83e1-c3604c85e15d"
+    },
+    {
+      "parameters": {
+        "url": "=http://webserver:8000/api/tasks/?task_id={{ $('Upload Paperless').item.json.taskId.replace(/\"/g, '') }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1536,
+        0
+      ],
+      "id": "af871781-cac1-4a47-9063-2fca2456d919",
+      "name": "Task-Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "U6k83Liz7xQq6Ft6",
+          "name": "Paperless API (User n8n)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE automation.processed_attachments\nSET status = $1,\n    paperless_task_id = $2,\n    paperless_document_id = $3,\n    error = $4,\n    updated_at = now()\nWHERE id = $5;",
+        "options": {
+          "queryReplacement": "={{ [   $json.results?.[0]?.status === 'success' ? 'uploaded'     : $json.results?.[0]?.status === 'failure' ? 'failed' : 'pending',   $('Upload Paperless').item.json.taskId.replace(/\"/g, ''),   $json.results?.[0]?.result_data?.document_id ?? null,   $json.results?.[0]?.status === 'success' ? null : JSON.stringify($json.results?.[0] ?? 'Task nicht gefunden'),   $('Nur neue Anhänge').item.json.dedupId ] }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1760,
+        0
+      ],
+      "id": "ae520f03-bd9a-44fe-be71-fdc3e647cf3d",
+      "name": "Status speichern",
+      "credentials": {
+        "postgres": {
+          "id": "ji9ymk4x6Ah388Gy",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "connections": {
@@ -187,6 +246,39 @@
         [
           {
             "node": "Upload Paperless",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Paperless": {
+      "main": [
+        [
+          {
+            "node": "Kurz warten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kurz warten": {
+      "main": [
+        [
+          {
+            "node": "Task-Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Task-Status": {
+      "main": [
+        [
+          {
+            "node": "Status speichern",
             "type": "main",
             "index": 0
           }
